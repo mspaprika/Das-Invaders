@@ -48,13 +48,19 @@ const int INVADER_LIM_LEFT = LEFT_LIMIT - 50;
 const int INVADER_LIM_RIGHT = RIGHT_LIMIT + 50;
 
 const Point2D PLAYER_POS = { LEFT_LIMIT, DISPLAY_HEIGHT / 2 + 300 };
+
 const float PLAYER_SPEED = 5.f;
 const float LASER_SPEED = -10.f;
 const float BOMB_SPEED = 5.f;
 const float UFO_SPEED = 5.f;
-const float INVADER_MOVE = 10.f;
-const float INVADER_SPEED = 0.3f;
-const float INVADER_DROP = 10.f;
+//const float INVADER_MOVE = 10.f;
+const float INVADER_SPEED = 0.7f;
+const float INVADER_DROP = 1.f;
+const float INVADER_DROP_X = 0.1f;
+
+const float MOVE_TIMER = 0.3f;
+const float DROP_TIMER = 0.3f;
+const float IDLE_TIMER = 1.f;
 
 
 const int MAX_INVADERS_A = 11;
@@ -94,6 +100,13 @@ enum InvaderType
 	INVADER_UFO,
 };
 
+enum InvaderState
+{
+	INV_IDLE,
+	INV_MOVE,
+	INV_DROP,
+};
+
 struct Player
 {
 	int health{ 3 };
@@ -103,13 +116,13 @@ struct Player
 struct Invader
 {
 	InvaderType type;
+	InvaderState state = INV_MOVE;
 	int id;
-	int vectorID;	
+	int vectorID;
+
 	bool active{ false };
 	bool shot{ false };
-	bool targetSet{ false };
-	int targetPos{ 0 };
-
+	
 	float prevSpeed{ 0.f };
 };
 
@@ -127,8 +140,19 @@ struct GameState
 	int score{ 0 };
 	int lives{ 3 };
 	int level{ 1 };
+
+	bool invDirRight{ true };
+	bool invIdle{ false };
+	bool invDrop{ false };
+	bool invMove{ true };
 };
 
+struct Timers
+{
+	float moveTimer{ 0.f };
+	float dropTimer{ 0.f };
+	float idleTimer{ 0.f };
+};
 
 // Functions
 void Draw();
@@ -137,6 +161,7 @@ void DrawGameStats();
 
 void UpdateGameStates();
 void CreateGameObjects();
+void TimerControls(float time);
 
 void PlayerControls(GameObject& player);
 void UpdateInvaders();
@@ -153,4 +178,4 @@ void SetTarget(GameObject& invader, Invader& sInvader);
 void AllMove();
 void AllStop();
 void AllReverse();
-
+void ChageInvadersStates(InvaderState state);
