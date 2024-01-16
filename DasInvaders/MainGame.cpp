@@ -6,6 +6,7 @@
 
 
 GameState gState;
+Timers t;
 
 std::vector <Invader> vInvaders;
 std::vector <Shield> vShields;
@@ -22,6 +23,8 @@ void MainGameEntry( PLAY_IGNORE_COMMAND_LINE )
 // Called by PlayBuffer every frame (60 times a second!)
 bool MainGameUpdate( float elapsedTime )
 {
+	TimerControls(elapsedTime);
+
 	UpdateGameStates();
 	Draw();
 
@@ -173,6 +176,46 @@ void CreateGameObjects()
 
 }
 
+void TimerControls(float time)
+{
+	if (gState.invIdle)
+	{
+		t.idleTimer += time;
+
+		if (t.idleTimer > IDLE_TIMER)
+		{
+			t.idleTimer = 0.f;
+			gState.invIdle = false;
+			gState.invDrop = false;
+			ChageInvadersStates(INV_MOVE);
+		}
+	}
+	else if (gState.invMove)
+	{
+		t.moveTimer += time;
+
+		if (t.moveTimer > MOVE_TIMER)
+		{
+			t.moveTimer = 0.f;
+			gState.invMove = false;
+			gState.invDrop = false;
+			ChageInvadersStates(INV_IDLE);
+		}
+	}
+	else if (gState.invDrop)
+	{
+		t.dropTimer += time;
+
+		if (t.dropTimer > DROP_TIMER)
+		{
+			t.dropTimer = 0.f;
+			gState.invDrop = false;
+			gState.invMove = false;
+			ChageInvadersStates(INV_IDLE);
+		}
+	}
+}
+
 
 // Player
 void PlayerControls(GameObject& player)
@@ -210,10 +253,46 @@ void UpdateInvaders()
 {
 	for (Invader& invader : vInvaders)
 	{
+		GameObject& objInvader = Play::GetGameObject(invader.id);
 		if (invader.active)	LaserCollisions(invader);
 		if (invader.active)	InvaderControls(invader);
 
-		InvaderMovement(invader);
+		switch (invader.state)
+		{
+			case INV_IDLE:
+			{
+				objInvader.velocity = { 0.f, 0.f };
+		
+				if (!gState.invIdle) ChageInvadersStates(INV_MOVE);
+
+				break;
+			}
+			case INV_MOVE:
+			{
+				objInvader.velocity.y = 0.f;
+				objInvader.velocity.x = (gState.invDirRight) ? INVADER_SPEED : -INVADER_SPEED;
+
+				if (objInvader.pos.x > INVADER_LIM_RIGHT || objInvader.pos.x < INVADER_LIM_LEFT)
+				{
+					ChageInvadersStates(INV_DROP);
+					gState.invMove = false;
+					gState.invIdle = false;
+					gState.invDirRight = !(gState.invDirRight);
+					break;
+				}
+
+				if (!gState.invMove) ChageInvadersStates(INV_IDLE);
+		
+				break;
+			}
+			case INV_DROP:
+			{
+				objInvader.velocity.y = { INVADER_DROP };
+				objInvader.velocity.x = (gState.invDirRight) ? INVADER_DROP_X : -INVADER_DROP_X;
+		
+				break;
+			}
+		}
 
 		Play::UpdateGameObject(Play::GetGameObject(invader.id));
 	}
@@ -286,80 +365,13 @@ void InvaderControls(Invader& invader)
 	
 }
 
-void InvaderMovement(Invader& invader)
+void ChageInvadersStates(InvaderState state)
 {
-	GameObject& objInvader = Play::GetGameObject(invader.id);
-	
-	if (objInvader.pos.x > INVADER_LIM_RIGHT || objInvader.pos.x < INVADER_LIM_LEFT )
-	{
-		if (objInvader.pos.x != 0.f)
-		{
-			invader.prevSpeed = objInvader.velocity.x;
-			AllDrop();
-			AllReverse();
-		}
-	}
+	for (Invader& invader : vInvaders) invader.state = state;
+
+	if (state == INV_IDLE) gState.invIdle = true;
+	else if (state == INV_MOVE) gState.invMove = true;
+	else if (state == INV_DROP) gState.invDrop = true;
 }
-
-void SetTarget(GameObject& invader, Invader& sInvader)
-{
-	if (invader.velocity.x > 0.f) sInvader.targetPos = invader.oldPos.x + INVADER_MOVE;
-	else if (invader.velocity.x < 0.f) sInvader.targetPos = invader.oldPos.x - INVADER_MOVE;
-
-	sInvader.targetSet = true;
-	
-}
-
-void AllDrop()
-{
-	for (Invader& invader : vInvaders)
-	{
-		if (invader.shot) continue;
-		GameObject& objInvader = Play::GetGameObject(invader.id);
-
-		(objInvader.velocity.x > 0.f) ? objInvader.pos.x -= 1 : objInvader.pos.x += 1;
-		objInvader.pos.y += INVADER_DROP;
-		invader.prevSpeed = objInvader.velocity.x;
-		objInvader.velocity.x = 0.f;
-	}
-}
-
-void AllReverse()
-{
-	for (Invader& invader : vInvaders)
-	{
-		GameObject& objInvader = Play::GetGameObject(invader.id);
-
-		objInvader.velocity.x = invader.prevSpeed * (-1);
-	}
-}
-
-
-
-void AllMove()
-{
-	for (Invader& invader : vInvaders)
-	{
-		GameObject& objInvader = Play::GetGameObject(invader.id);
-
-		objInvader.velocity.x = invader.prevSpeed;
-	}
-}
-
-void AllStop()
-{
-	for (Invader& invader : vInvaders)
-	{
-		GameObject& objInvader = Play::GetGameObject(invader.id);
-
-		objInvader.velocity.x = 0.f;
-	}
-}	
-
-
-
-
-
-
 
 
